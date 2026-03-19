@@ -1,0 +1,112 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: claims_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: claims_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: claims_redis
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  users-service:
+    build:
+      context: .
+      dockerfile: apps/users-service/Dockerfile
+    container_name: claims_users_svc
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: claims_db
+      JWT_SECRET: ${JWT_SECRET:-super_secret_dev_key_change_in_prod}
+      JWT_EXPIRES_IN: 8h
+    ports:
+      - '3002:3002'
+    restart: unless-stopped
+
+  claims-service:
+    build:
+      context: .
+      dockerfile: apps/claims-service/Dockerfile
+    container_name: claims_claims_svc
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: claims_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-super_secret_dev_key_change_in_prod}
+    ports:
+      - '3001:3001'
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: apps/api-gateway/Dockerfile
+    container_name: claims_gateway
+    depends_on:
+      - users-service
+      - claims-service
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      CLAIMS_SERVICE_URL: http://claims-service:3001
+      USERS_SERVICE_URL: http://users-service:3002
+      JWT_SECRET: ${JWT_SECRET:-super_secret_dev_key_change_in_prod}
+      FRONTEND_URL: http://localhost:5173
+    ports:
+      - '3000:3000'
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: apps/frontend
+      dockerfile: Dockerfile
+    container_name: claims_frontend
+    depends_on:
+      - api-gateway
+    ports:
+      - '80:80'
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

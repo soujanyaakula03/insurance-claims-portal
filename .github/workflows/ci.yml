@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─────────────────────────────────────────────────────────
+  # 1. Install dependencies for all workspaces
+  # ─────────────────────────────────────────────────────────
+  install:
+    name: Install Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install workspace dependencies
+        run: npm ci --ignore-scripts
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+
+  # ─────────────────────────────────────────────────────────
+  # 2. Lint (all workspaces)
+  # ─────────────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    needs: install
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci --ignore-scripts
+      - name: Lint claims-service
+        run: npx tsc --noEmit
+        working-directory: apps/claims-service
+      - name: Lint users-service
+        run: npx tsc --noEmit
+        working-directory: apps/users-service
+      - name: Lint api-gateway
+        run: npx tsc --noEmit
+        working-directory: apps/api-gateway
+
+  # ─────────────────────────────────────────────────────────
+  # 3. Backend tests
+  # ─────────────────────────────────────────────────────────
+  test-backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    needs: install
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci --ignore-scripts
+      - name: Run claims-service tests
+        run: npm test
+        working-directory: apps/claims-service
+        env:
+          NODE_ENV: test
+          JWT_SECRET: test_secret
+
+  # ─────────────────────────────────────────────────────────
+  # 4. Frontend tests
+  # ─────────────────────────────────────────────────────────
+  test-frontend:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    needs: install
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci --ignore-scripts
+      - name: Run frontend component tests
+        run: npm test
+        working-directory: apps/frontend
+
+  # ─────────────────────────────────────────────────────────
+  # 5. Build all services
+  # ─────────────────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, test-backend, test-frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci --ignore-scripts
+      - name: Build backend services
+        run: |
+          npm run build --workspace=apps/users-service
+          npm run build --workspace=apps/claims-service
+          npm run build --workspace=apps/api-gateway
+      - name: Build frontend
+        run: npm run build
+        working-directory: apps/frontend
+        env:
+          VITE_API_BASE_URL: /api

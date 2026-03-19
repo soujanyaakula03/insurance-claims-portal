@@ -1,0 +1,31 @@
+{
+  "name": "insurance-claims-portal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A full-stack enterprise Insurance Claims Management Portal built with React, TypeScript, Node.js, PostgreSQL, and Redis.",
+  "workspaces": [
+    "apps/*",
+    "shared/*"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace=apps/frontend",
+    "dev:gateway": "npm run dev --workspace=apps/api-gateway",
+    "dev:claims": "npm run dev --workspace=apps/claims-service",
+    "dev:users": "npm run dev --workspace=apps/users-service",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "keywords": [
+    "insurance",
+    "claims",
+    "microservices",
+    "react",
+    "typescript",
+    "nodejs",
+    "postgresql",
+    "redis"
+  ],
+  "author": "Jay",
+  "license": "MIT"
+}
