@@ -290,4 +290,4 @@ insurance-claims-portal/
 
 ## 📄 License
 
-MIT © Jay
+MIT © Devi Soujanya Akula
