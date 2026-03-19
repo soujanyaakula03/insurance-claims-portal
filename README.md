@@ -4,7 +4,6 @@
 
 **A production-style internal enterprise web application for managing and tracking insurance claims — built as a full-stack portfolio project demonstrating real-world microservices patterns.**
 
-[![CI](https://github.com/yourusername/insurance-claims-portal/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/insurance-claims-portal/actions/workflows/ci.yml)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
 ![React](https://img.shields.io/badge/React-18-61DAFB)
 ![Node.js](https://img.shields.io/badge/Node.js-20-green)
